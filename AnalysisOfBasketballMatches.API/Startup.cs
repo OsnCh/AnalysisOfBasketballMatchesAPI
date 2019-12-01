@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ApplicationCore.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -42,8 +43,12 @@ namespace AnalysisOfBasketballMatches.API
         public void ConfigureServices(IServiceCollection services)
         {
             var appSettings = Configuration.GetSection("AppSettings");
+            var adminDetailOprions = Configuration.GetSection("AdminDetailOptions");
 
-            ApplicationCore.Startup.Configure(appSettings["DbConnectionString"], services);
+            services.Configure<AdminDetailOptions>(adminDetailOprions);
+
+            Infrastructure.Startup.Configure(appSettings["DbConnectionString"], services);
+            ApplicationCore.Startup.Configure(services);
 
             services.AddCors(config =>
                 config.AddPolicy("policy",
@@ -111,7 +116,7 @@ namespace AnalysisOfBasketballMatches.API
 
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IServiceProvider serviceProvider)
         {
             if (env.IsDevelopment())
             {
@@ -121,6 +126,9 @@ namespace AnalysisOfBasketballMatches.API
             {
                 app.UseHsts();
             }
+
+            var appSettings = Configuration.GetSection("AppSettings");
+            Infrastructure.Startup.EnsureUpdate(appSettings["DbConnectionString"], serviceProvider);
 
             app.UseCors("policy");
             app.UseSwagger();
@@ -140,6 +148,7 @@ namespace AnalysisOfBasketballMatches.API
             });
             app.UseAuthentication();
 
+            ApplicationCore.Startup.CreateRoles(serviceProvider, Configuration).Wait();
         }
     }
 }
